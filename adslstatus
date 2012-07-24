@@ -6,13 +6,13 @@ use warnings;
 use IO::Socket::INET;
 
 sub read_to {
-	my ($sock, $until) = @_;
-	my $read;
-	while (1) {
-		$read .= <$sock>;
-		last if $read =~ /$until$/
-	}
-	return $read;
+    my ($sock, $until) = @_;
+    my $read;
+    while (1) {
+        $read .= <$sock>;
+        last if $read =~ /$until$/
+    }
+    return $read;
 }
 
 sub read_values {
@@ -20,108 +20,108 @@ sub read_values {
     my $modem_host     = $ENV{modem_host}     || die "No modem_host set\n";
     my $modem_password = $ENV{modem_password} || die "No modem_password set\n";
 
-	my $remote = IO::Socket::INET->new( PeerAddr => $modem_host, PeerPort => '23' );
-	print $remote "\r\n";
-	read_to($remote, 'Password: ');
-	print $remote "$modem_password\r\n\r\n";
-	read_to($remote, '> ');
-	print $remote "adsl status\r\n\r\n";
-	my $status = read_to($remote, '> ');
-	print $remote "exit\r\n\r\n";
+    my $remote = IO::Socket::INET->new( PeerAddr => $modem_host, PeerPort => '23' );
+    print $remote "\r\n";
+    read_to($remote, 'Password: ');
+    print $remote "$modem_password\r\n\r\n";
+    read_to($remote, '> ');
+    print $remote "adsl status\r\n\r\n";
+    my $status = read_to($remote, '> ');
+    print $remote "exit\r\n\r\n";
     close $remote;
 
-	my %values;
-	($values{ds_rate}) = $status =~ /DS Actual Rate\s+:\s+(\d+)\s+bps/;
-	($values{ds_attainable_rate}) = $status =~ /DS Attainable Rate\s+:\s+(\d+)\s+bps/;
-	($values{us_rate}) = $status =~ /US Actual Rate\s+:\s+(\d+)\s+bps/;
-	($values{us_attainable_rate}) = $status =~ /US Attainable Rate\s+:\s+(\d+)\s+bps/;
+    my %values;
+    ($values{ds_rate}) = $status =~ /DS Actual Rate\s+:\s+(\d+)\s+bps/;
+    ($values{ds_attainable_rate}) = $status =~ /DS Attainable Rate\s+:\s+(\d+)\s+bps/;
+    ($values{us_rate}) = $status =~ /US Actual Rate\s+:\s+(\d+)\s+bps/;
+    ($values{us_attainable_rate}) = $status =~ /US Attainable Rate\s+:\s+(\d+)\s+bps/;
 
-	$values{ds_rate} /= 1000;
-	$values{ds_attainable_rate} /= 1000;
-	$values{us_rate} /= 1000;
-	$values{us_attainable_rate} /= 1000;
+    $values{ds_rate} /= 1000;
+    $values{ds_attainable_rate} /= 1000;
+    $values{us_rate} /= 1000;
+    $values{us_attainable_rate} /= 1000;
 
-	($values{near_attenuation}) = $status =~ /NE Current Attenuation\s+:\s+(\d+)\s+dB/;
-	($values{near_snr_margin})  = $status =~ /Cur SNR Margin\s+:\s+(\d+)\s+dB/;
-	($values{near_psd})         = $status =~ /DS actual PSD\s+:\s+(\d+\.\s*\d+)\s+dB/;
+    ($values{near_attenuation}) = $status =~ /NE Current Attenuation\s+:\s+(\d+)\s+dB/;
+    ($values{near_snr_margin})  = $status =~ /Cur SNR Margin\s+:\s+(\d+)\s+dB/;
+    ($values{near_psd})         = $status =~ /DS actual PSD\s+:\s+(\d+\.\s*\d+)\s+dB/;
 
     $values{near_psd} =~ s/\s//g;
 
-	($values{far_attenuation}) = $status =~ /Far Current Attenuation\s+:\s+(\d+)\s+dB/;
-	($values{far_snr_margin})  = $status =~ /Far SNR Margin\s+:\s+(\d+)\s+dB/;
-	($values{far_psd})         = $status =~ /US actual PSD\s+:\s+(\d+\.\s*\d+)\s+dB/;
+    ($values{far_attenuation}) = $status =~ /Far Current Attenuation\s+:\s+(\d+)\s+dB/;
+    ($values{far_snr_margin})  = $status =~ /Far SNR Margin\s+:\s+(\d+)\s+dB/;
+    ($values{far_psd})         = $status =~ /US actual PSD\s+:\s+(\d+\.\s*\d+)\s+dB/;
 
     $values{far_psd} =~ s/\s//g;
 
-	return \%values;
+    return \%values;
 }
 
 $0 =~ /adslstatus_(.+)$/;
 my $type = $1;
 unless ( $1 eq 'speed' || $1 eq 'linestats' ) {
-	die "Must be called as either 'adslstatus_speed' or 'adslstatus_linestats'\n";
+    die "Must be called as either 'adslstatus_speed' or 'adslstatus_linestats'\n";
 }
 
 if ( $ARGV[0] and $ARGV[0] eq "config" ) {
 
-	print "graph_category ADSL\n";
+    print "graph_category ADSL\n";
 
-	if ( $type eq 'speed' ) {
-		print "graph_title Connection speeds\n";
-		#print "graph_args --base 1000 -l 0\n";
-		print "graph_vlabel kbps\n";
-		print "graph_scale  no\n";
-		print "downstream.label downstream\n";
-		print "downstream.draw LINE2\n";
-		print "downstream_attainable.label downstream_attainable\n";
-		print "downstream_attainable.draw LINE2\n";
-		print "upstream.label upstream\n";
-		print "upstream.draw LINE2\n";
-		print "upstream_attainable.label upstream_attainable\n";
-		print "upstream_attainable.draw LINE2\n";
-	} elsif ( $type eq 'linestats' ) {
-		print "graph_title Line statistics\n";
-		#print "graph_args --base 1000 -l 0\n";
-		print "graph_vlabel dB\n";
-		print "graph_scale  no\n";
-		print "graph_info See http://www.kitz.co.uk/adsl/index.htm for help interpreting these figures.\n";
-		print "near_attenuation.label near_attenuation\n";
-		print "near_attenuation.draw LINE2\n";
-		print "near_attenuation.info Downstream attenuation, lower is better\n";
-		print "near_snr_margin.label near_snr_margin\n";
-		print "near_snr_margin.draw LINE2\n";
-		print "near_snr_margin.info Downstream SNR margin, higher is better\n";
-		print "near_psd.label near_psd\n";
-		print "near_psd.draw LINE2\n";
-		print "near_psd.info Downstream power spectrum density\n";
-		print "far_attenuation.label far_attenuation\n";
-		print "far_attenuation.draw LINE2\n";
-		print "far_attenuation.info Upstream attenuation, lower is better\n";
-		print "far_snr_margin.label far_snr_margin\n";
-		print "far_snr_margin.draw LINE2\n";
-		print "far_snr_margin.info Upstream SNR margin, higher is better\n";
-		print "far_psd.label far_psd\n";
-		print "far_psd.draw LINE2\n";
-		print "far_psd.info Upstream power spectrum density\n";
-	}
-	exit 0;
+    if ( $type eq 'speed' ) {
+        print "graph_title Connection speeds\n";
+        #print "graph_args --base 1000 -l 0\n";
+        print "graph_vlabel kbps\n";
+        print "graph_scale  no\n";
+        print "downstream.label downstream\n";
+        print "downstream.draw LINE2\n";
+        print "downstream_attainable.label downstream_attainable\n";
+        print "downstream_attainable.draw LINE2\n";
+        print "upstream.label upstream\n";
+        print "upstream.draw LINE2\n";
+        print "upstream_attainable.label upstream_attainable\n";
+        print "upstream_attainable.draw LINE2\n";
+    } elsif ( $type eq 'linestats' ) {
+        print "graph_title Line statistics\n";
+        #print "graph_args --base 1000 -l 0\n";
+        print "graph_vlabel dB\n";
+        print "graph_scale  no\n";
+        print "graph_info See http://www.kitz.co.uk/adsl/index.htm for help interpreting these figures.\n";
+        print "near_attenuation.label near_attenuation\n";
+        print "near_attenuation.draw LINE2\n";
+        print "near_attenuation.info Downstream attenuation, lower is better\n";
+        print "near_snr_margin.label near_snr_margin\n";
+        print "near_snr_margin.draw LINE2\n";
+        print "near_snr_margin.info Downstream SNR margin, higher is better\n";
+        print "near_psd.label near_psd\n";
+        print "near_psd.draw LINE2\n";
+        print "near_psd.info Downstream power spectrum density\n";
+        print "far_attenuation.label far_attenuation\n";
+        print "far_attenuation.draw LINE2\n";
+        print "far_attenuation.info Upstream attenuation, lower is better\n";
+        print "far_snr_margin.label far_snr_margin\n";
+        print "far_snr_margin.draw LINE2\n";
+        print "far_snr_margin.info Upstream SNR margin, higher is better\n";
+        print "far_psd.label far_psd\n";
+        print "far_psd.draw LINE2\n";
+        print "far_psd.info Upstream power spectrum density\n";
+    }
+    exit 0;
 }
 
 my $values = read_values;
 
 if ( $type eq 'speed' ) {
 
-	print "downstream.value ".$values->{ds_rate}."\n";
-	print "downstream_attainable.value ".$values->{ds_attainable_rate}."\n";
-	print "upstream.value ".$values->{us_rate}."\n";
-	print "upstream_attainable.value ".$values->{us_attainable_rate}."\n";
+    print "downstream.value ".$values->{ds_rate}."\n";
+    print "downstream_attainable.value ".$values->{ds_attainable_rate}."\n";
+    print "upstream.value ".$values->{us_rate}."\n";
+    print "upstream_attainable.value ".$values->{us_attainable_rate}."\n";
 
 } elsif ( $type eq 'linestats' ) {
 
-	print "near_attenuation.value ".$values->{near_attenuation}."\n";
-	print "near_snr_margin.value ".$values->{near_snr_margin}."\n";
-	print "near_psd.value ".$values->{near_psd}."\n";
-	print "far_attenuation.value ".$values->{far_attenuation}."\n";
-	print "far_snr_margin.value ".$values->{far_snr_margin}."\n";
-	print "far_psd.value ".$values->{far_psd}."\n";
+    print "near_attenuation.value ".$values->{near_attenuation}."\n";
+    print "near_snr_margin.value ".$values->{near_snr_margin}."\n";
+    print "near_psd.value ".$values->{near_psd}."\n";
+    print "far_attenuation.value ".$values->{far_attenuation}."\n";
+    print "far_snr_margin.value ".$values->{far_snr_margin}."\n";
+    print "far_psd.value ".$values->{far_psd}."\n";
 }
