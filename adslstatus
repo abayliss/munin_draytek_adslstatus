@@ -15,8 +15,7 @@ sub read_to {
     return $read;
 }
 
-sub read_values {
-
+sub read_status {
     my $modem_host     = $ENV{modem_host}     || die "No modem_host set\n";
     my $modem_password = $ENV{modem_password} || die "No modem_password set\n";
 
@@ -29,6 +28,13 @@ sub read_values {
     my $status = read_to($remote, '> ');
     print $remote "exit\r\n\r\n";
     close $remote;
+
+    return $status;
+}
+
+sub read_values {
+
+    my $status = read_status;
 
     my %values;
     ($values{ds_rate}) = $status =~ /DS Actual Rate\s+:\s+(\d+)\s+bps/;
@@ -68,7 +74,6 @@ if ( $ARGV[0] and $ARGV[0] eq "config" ) {
 
     if ( $type eq 'speed' ) {
         print "graph_title Connection speeds\n";
-        #print "graph_args --base 1000 -l 0\n";
         print "graph_vlabel kbps\n";
         print "graph_scale  no\n";
         print "downstream.label downstream\n";
@@ -81,26 +86,25 @@ if ( $ARGV[0] and $ARGV[0] eq "config" ) {
         print "upstream_attainable.draw LINE2\n";
     } elsif ( $type eq 'linestats' ) {
         print "graph_title Line statistics\n";
-        #print "graph_args --base 1000 -l 0\n";
         print "graph_vlabel dB\n";
         print "graph_scale  no\n";
         print "graph_info See http://www.kitz.co.uk/adsl/index.htm for help interpreting these figures.\n";
-        print "near_attenuation.label near_attenuation\n";
+        print "near_attenuation.label Downstream attenuation\n";
         print "near_attenuation.draw LINE2\n";
         print "near_attenuation.info Downstream attenuation, lower is better\n";
-        print "near_snr_margin.label near_snr_margin\n";
+        print "near_snr_margin.label Downstream SNR margin\n";
         print "near_snr_margin.draw LINE2\n";
         print "near_snr_margin.info Downstream SNR margin, higher is better\n";
-        print "near_psd.label near_psd\n";
+        print "near_psd.label Downstream PSD\n";
         print "near_psd.draw LINE2\n";
         print "near_psd.info Downstream power spectrum density\n";
-        print "far_attenuation.label far_attenuation\n";
+        print "far_attenuation.label Upstream attenuation\n";
         print "far_attenuation.draw LINE2\n";
         print "far_attenuation.info Upstream attenuation, lower is better\n";
-        print "far_snr_margin.label far_snr_margin\n";
+        print "far_snr_margin.label Upstream SNR margin\n";
         print "far_snr_margin.draw LINE2\n";
         print "far_snr_margin.info Upstream SNR margin, higher is better\n";
-        print "far_psd.label far_psd\n";
+        print "far_psd.label Upstream PSD\n";
         print "far_psd.draw LINE2\n";
         print "far_psd.info Upstream power spectrum density\n";
     }
