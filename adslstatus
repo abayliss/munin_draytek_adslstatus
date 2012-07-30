@@ -76,13 +76,13 @@ if ( $ARGV[0] and $ARGV[0] eq "config" ) {
         print "graph_title Connection speeds\n";
         print "graph_vlabel kbps\n";
         print "graph_scale  no\n";
-        print "downstream.label downstream\n";
+        print "downstream.label Downstream speed\n";
         print "downstream.draw LINE2\n";
-        print "downstream_attainable.label downstream_attainable\n";
+        print "downstream_attainable.label Downstream attainable speed\n";
         print "downstream_attainable.draw LINE2\n";
-        print "upstream.label upstream\n";
+        print "upstream.label Upstream speed\n";
         print "upstream.draw LINE2\n";
-        print "upstream_attainable.label upstream_attainable\n";
+        print "upstream_attainable.label Upstream attainable speed\n";
         print "upstream_attainable.draw LINE2\n";
     } elsif ( $type eq 'linestats' ) {
         print "graph_title Line statistics\n";
