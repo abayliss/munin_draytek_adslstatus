@@ -3,31 +3,31 @@
 use strict;
 use warnings;
 
-use IO::Socket::INET;
-
-sub read_to {
-    my ($sock, $until) = @_;
-    my $read;
-    while (1) {
-        $read .= <$sock>;
-        last if $read =~ /$until$/
-    }
-    return $read;
-}
+use Net::Telnet ();
 
 sub read_status {
-    my $modem_host     = $ENV{modem_host}     || die "No modem_host set\n";
-    my $modem_password = $ENV{modem_password} || die "No modem_password set\n";
 
-    my $remote = IO::Socket::INET->new( PeerAddr => $modem_host, PeerPort => '23' );
-    print $remote "\r\n";
-    read_to($remote, 'Password: ');
-    print $remote "$modem_password\r\n\r\n";
-    read_to($remote, '> ');
-    print $remote "adsl status\r\n\r\n";
-    my $status = read_to($remote, '> ');
-    print $remote "exit\r\n\r\n";
-    close $remote;
+    my $status;
+    my $modem_host = $ENV{modem_host} || die "No modem_host set\n";
+    my $modem_password = $ENV{modem_password} || die "No modem_password set\n";
+    
+    my $telnet = new Net::Telnet ( Host => $modem_host, Timeout => 10, Errmode => 'die');
+    
+    # Seems necessary to open and close the telnet connection one time first, otherwise the router responds
+    #  "System administrator is connecting from n.n.n.n. Reject the connection request !!!"
+    $telnet->open();
+    $telnet->close;
+    
+    $telnet->open();
+	$telnet->waitfor('/Account:$/i');
+	$telnet->print('admin');
+	$telnet->waitfor('/Password: $/i');
+	$telnet->print($modem_password); 
+	$telnet->waitfor('/> $/i');
+	$telnet->print('adsl status');
+	($status) = $telnet->waitfor('/> $/i');
+	$telnet->print('exit');
+    $telnet->close;
 
     return $status;
 }
@@ -48,14 +48,14 @@ sub read_values {
     $values{us_attainable_rate} /= 1000;
 
     ($values{near_attenuation}) = $status =~ /NE Current Attenuation\s+:\s+(\d+)\s+dB/;
-    ($values{near_snr_margin})  = $status =~ /Cur SNR Margin\s+:\s+(\d+)\s+dB/;
-    ($values{near_psd})         = $status =~ /DS actual PSD\s+:\s+(\d+\.\s*\d+)\s+dB/;
+    ($values{near_snr_margin}) = $status =~ /Cur SNR Margin\s+:\s+(\d+)\s+dB/;
+    ($values{near_psd}) = $status =~ /DS actual PSD\s+:\s+(\d+\.\s*\d+)\s+dB/;
 
     $values{near_psd} =~ s/\s//g;
 
     ($values{far_attenuation}) = $status =~ /Far Current Attenuation\s+:\s+(\d+)\s+dB/;
-    ($values{far_snr_margin})  = $status =~ /Far SNR Margin\s+:\s+(\d+)\s+dB/;
-    ($values{far_psd})         = $status =~ /US actual PSD\s+:\s+(\d+\.\s*\d+)\s+dB/;
+    ($values{far_snr_margin}) = $status =~ /Far SNR Margin\s+:\s+(\d+)\s+dB/;
+    ($values{far_psd}) = $status =~ /US actual PSD\s+:\s+(\d+\.\s*\d+)\s+dB/;
 
     $values{far_psd} =~ s/\s//g;
 
@@ -75,7 +75,7 @@ if ( $ARGV[0] and $ARGV[0] eq "config" ) {
     if ( $type eq 'speed' ) {
         print "graph_title Connection speeds\n";
         print "graph_vlabel kbps\n";
-        print "graph_scale  no\n";
+        print "graph_scale no\n";
         print "downstream.label Downstream speed\n";
         print "downstream.draw LINE2\n";
         print "downstream_attainable.label Downstream attainable speed\n";
@@ -87,7 +87,7 @@ if ( $ARGV[0] and $ARGV[0] eq "config" ) {
     } elsif ( $type eq 'linestats' ) {
         print "graph_title Line statistics\n";
         print "graph_vlabel dB\n";
-        print "graph_scale  no\n";
+        print "graph_scale no\n";
         print "graph_info See http://www.kitz.co.uk/adsl/index.htm for help interpreting these figures.\n";
         print "near_attenuation.label Downstream attenuation\n";
         print "near_attenuation.draw LINE2\n";
